@@ -1,7 +1,7 @@
 {
   "name": "teachassist",
   "displayName": "teachassist",
-  "description": "",
+  "description": "Extension d'aide à la correction automatique de code Java",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.99.0"
@@ -9,13 +9,33 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "teachassist.helloWorld",
-        "title": "Hello World"
+        "command": "teachassist.openWelcomePanel",
+        "title": "TeachAssist: Ouvrir le panneau de bienvenue"
+      },
+      {
+        "command": "teachassist.detectZip",
+        "title": "TeachAssist: Détecter les fichiers ZIP"
+      },
+      {
+        "command": "teachassist.extractAndLocate",
+        "title": "TeachAssist: Extraire et localiser les fichiers"
+      },
+      {
+        "command": "teachassist.analyzeCode",
+        "title": "TeachAssist: Analyser le code Java"
+      },
+      {
+        "command": "teachassist.showResults",
+        "title": "TeachAssist: Afficher les résultats"
+      },
+      {
+        "command": "teachassist.exportResults",
+        "title": "TeachAssist: Exporter les résultats"
       }
     ]
   },
@@ -29,6 +49,7 @@
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
+    "@types/fs-extra": "^11.0.4",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/vscode": "^1.99.0",
