@@ -108,11 +108,24 @@ export function activate(context: vscode.ExtensionContext) {
 				
 				// Calculer le nombre total de fichiers Java trouvés
 				let totalJavaFiles = 0;
+				let emptyArchives = 0;
 				for (const files of javaFiles.values()) {
 					totalJavaFiles += files.length;
+					if (files.length === 0) {
+						emptyArchives++;
+					}
 				}
 				
-				vscode.window.showInformationMessage(`${totalJavaFiles} fichiers Java trouvés dans ${javaFiles.size} archives ZIP.`);
+				// Message différent selon qu'il y a des archives vides ou non
+				if (emptyArchives > 0) {
+					vscode.window.showWarningMessage(
+						`${totalJavaFiles} fichiers Java trouvés dans ${javaFiles.size} archives ZIP. Attention: ${emptyArchives} archive(s) ne contiennent aucun fichier Java.`
+					);
+				} else {
+					vscode.window.showInformationMessage(
+						`${totalJavaFiles} fichiers Java trouvés dans ${javaFiles.size} archives ZIP.`
+					);
+				}
 			} catch (error) {
 				vscode.window.showErrorMessage(`Erreur lors du traitement des fichiers: ${error}`);
 			}

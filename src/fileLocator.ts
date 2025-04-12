@@ -42,10 +42,12 @@ export class FileLocator {
             // Chercher tous les fichiers Java
             const javaFiles = await this.findJavaFiles(extractPath);
             
+            // Toujours ajouter l'entrée, même si aucun fichier Java n'est trouvé
+            results.set(zipBaseName, javaFiles);
+            
             if (javaFiles.length === 0) {
                 vscode.window.showWarningMessage(`Aucun fichier Java trouvé dans ${zipBaseName}`);
             } else {
-                results.set(zipBaseName, javaFiles);
                 vscode.window.showInformationMessage(`${javaFiles.length} fichiers Java trouvés dans ${zipBaseName}`);
             }
         }

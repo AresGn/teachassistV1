@@ -81,27 +81,34 @@ export class WelcomePanel {
 
         // Calculer le nombre total de fichiers Java
         let totalJavaFiles = 0;
+        let emptyArchives = 0;
         for (const files of this._javaFiles.values()) {
             totalJavaFiles += files.length;
+            if (files.length === 0) {
+                emptyArchives++;
+            }
         }
 
         const javaFilesHtml = this._javaFiles.size > 0
             ? `
                 <div class="java-files">
-                    <h3>Fichiers Java trouvés (${totalJavaFiles} dans ${this._javaFiles.size} archives)</h3>
+                    <h3>Fichiers Java trouvés (${totalJavaFiles} dans ${this._javaFiles.size} archives${emptyArchives > 0 ? `, dont ${emptyArchives} sans fichiers Java` : ''})</h3>
                     <ul>
                         ${Array.from(this._javaFiles.entries()).map(([zipName, filePaths]) => `
-                            <li>
+                            <li class="${filePaths.length === 0 ? 'no-files' : ''}">
                                 <strong>Fichier ZIP: ${zipName}</strong>
                                 <br>
-                                <small>${filePaths.length} fichier(s) Java trouvé(s)</small>
-                                <ul class="nested-files">
-                                    ${filePaths.map(filePath => `
-                                        <li>
-                                            <small>${path.basename(filePath)}</small>
-                                        </li>
-                                    `).join('')}
-                                </ul>
+                                ${filePaths.length === 0 
+                                  ? '<small class="warning">Aucun fichier Java trouvé dans cette archive</small>' 
+                                  : `<small>${filePaths.length} fichier(s) Java trouvé(s)</small>
+                                     <ul class="nested-files">
+                                        ${filePaths.map(filePath => `
+                                            <li>
+                                                <small>${path.basename(filePath)}</small>
+                                            </li>
+                                        `).join('')}
+                                     </ul>`
+                                }
                             </li>
                         `).join('')}
                     </ul>
@@ -185,6 +192,13 @@ export class WelcomePanel {
                     }
                     .phase.active {
                         background-color: var(--vscode-button-background);
+                    }
+                    .no-files {
+                        border-left: 3px solid var(--vscode-editorError-foreground);
+                    }
+                    .warning {
+                        color: var(--vscode-editorWarning-foreground);
+                        font-weight: bold;
                     }
                 </style>
             </head>
