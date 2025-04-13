@@ -49,72 +49,103 @@ Voici un plan de développement itératif pour créer votre extension VS Code de
 
 ## Phase 3: Analyse statique du code Java
 
-### Étape 3.1: Parsing et analyse du code
+### Étape 3.1: Configuration et déclenchement de l'analyse
 - Créer un module `codeAnalyzer.ts` utilisant `java-parser`
-- Implémenter l'analyse de la structure du code Java
-- Vérifier la présence des conditions de domaine de définition
-- Détecter l'implémentation des expressions mathématiques
+- Implémenter le chargement des fichiers de configuration JSON par exercice
+- Déclencher automatiquement l'analyse une fois le code soumis
+- Générer l'arbre syntaxique du code Java
 
 **Tests:**
-- Tester avec différents fichiers `Formules.java` corrects et incorrects
-- Vérifier que les domaines de définition sont correctement détectés
-- S'assurer que l'analyse fonctionne même avec des variations de code
+- Vérifier que les fichiers de configuration sont correctement chargés
+- Tester que l'analyse se déclenche automatiquement après soumission
+- S'assurer que l'arbre syntaxique est correctement créé
 
-### Étape 3.2: Évaluation de la structure et du style
-- Étendre `codeAnalyzer.ts` pour évaluer:
-  - L'organisation du code
-  - La lisibilité et les conventions
-  - La présence de commentaires
-  - La gestion des exceptions
+### Étape 3.2: Analyse et génération des constats
+- Développer les règles d'analyse basées sur la configuration
+- Implémenter la vérification des domaines de définition
+- Évaluer la structure, le style et les conventions du code
+- Générer des constats d'analyse structurés (JSON)
 
 **Tests:**
-- Tester avec des codes de différentes qualités structurelles
-- Vérifier que le système attribue des scores cohérents
-- S'assurer que les différents aspects du code sont correctement évalués
+- Tester avec différents fichiers Java corrects et incorrects
+- Vérifier que les constats sont précis et détaillés
+- S'assurer que les règles de la configuration sont correctement appliquées
+
+### Étape 3.3: Stockage des constats d'analyse
+- Implémenter un mécanisme de stockage temporaire des constats
+- Permettre l'accès aux résultats pour les phases ultérieures
+- Gérer différentes options de stockage (mémoire, fichier local)
+
+**Tests:**
+- Vérifier que les constats sont correctement enregistrés
+- Tester l'accès aux constats depuis d'autres modules
+- S'assurer que les données restent cohérentes entre les phases
 
 ## Phase 4: Tests d'exécution du code
 
-### Étape 4.1: Configuration du pont Java
+### Étape 4.1: Configuration du pont d'exécution Java
 - Créer un module `javaRunner.ts` utilisant `java-bridge`
-- Configurer l'exécution de code Java depuis l'extension
-- Implémenter une fonction pour les entrées/sorties virtuelles
+- Implémenter l'exécution du code Java soumis
+- Configurer les entrées/sorties pour les tests automatiques
 
 **Tests:**
-- Vérifier que le code Java peut être exécuté depuis l'extension
+- Vérifier que le code Java s'exécute correctement depuis l'extension
 - Tester que les entrées/sorties sont correctement gérées
 - S'assurer que les erreurs d'exécution sont capturées
 
-### Étape 4.2: Exécution des tests automatiques
-- Étendre `javaRunner.ts` pour tester avec les valeurs demandées (-1, 0, 2, 3, 8)
-- Capturer et analyser les sorties pour chaque valeur de test
-- Comparer avec les résultats attendus
+### Étape 4.2: Exécution et validation des tests
+- Exécuter le code avec les entrées de test spécifiées
+- Capturer les sorties pour chaque entrée de test
+- Comparer les résultats avec les valeurs attendues
+- Enregistrer les résultats des tests (réussite/échec)
 
 **Tests:**
-- Tester avec des implémentations qui produisent des résultats corrects
+- Tester avec des implémentations produisant des résultats corrects
 - Tester avec des implémentations comportant des erreurs
-- Vérifier que l'analyse des résultats est précise
+- Vérifier que la comparaison avec les valeurs attendues est précise
+
+### Étape 4.3: Stockage des résultats de test
+- Implémenter un mécanisme de stockage des résultats de test
+- Structurer les résultats pour faciliter leur analyse
+- Préparer les données pour la phase d'évaluation par IA
+
+**Tests:**
+- Vérifier que les résultats sont correctement stockés
+- Tester l'intégrité des données entre les phases
+- S'assurer que le format des résultats est adapté pour l'IA
 
 ## Phase 5: Intégration de l'IA pour l'évaluation
 
-### Étape 5.1: Configuration de l'API IA
-- Créer un module `aiEvaluator.ts` utilisant OpenAI
-- Configurer l'authentification à l'API
-- Structurer les requêtes pour l'analyse de code
+### Étape 5.1: Préparation des données pour l'IA
+- Créer un module d'évaluation par IA
+- Structurer les entrées pour l'IA (constats d'analyse, résultats des tests)
+- Intégrer le contexte de l'exercice (barème, critères)
 
 **Tests:**
-- Vérifier que l'API répond correctement
-- Tester avec des exemples de code simples
-- S'assurer que les délais de réponse sont acceptables
+- Vérifier que toutes les données nécessaires sont correctement préparées
+- Tester la structure des entrées fournies à l'IA
+- S'assurer que le contexte de l'exercice est bien intégré
 
-### Étape 5.2: Analyse qualitative par IA
-- Implémenter l'évaluation de la structure et du style du code
-- Générer des commentaires personnalisés sur la qualité du code
-- Produire des suggestions d'amélioration
+### Étape 5.2: Traitement et évaluation par l'IA
+- Implémenter l'analyse des données par l'IA
+- Développer l'algorithme d'évaluation de la qualité du code
+- Mettre en place le calcul de note selon les critères définis
+- Générer un feedback personnalisé détaillé
 
 **Tests:**
-- Tester avec différents styles de code Java
-- Vérifier que les commentaires sont pertinents et utiles
-- S'assurer que l'évaluation est cohérente entre différents codes
+- Tester l'évaluation avec différents types de soumissions
+- Vérifier que les notes générées sont cohérentes
+- S'assurer que le feedback est pertinent et utile
+
+### Étape 5.3: Présentation des résultats
+- Implémenter l'affichage de la note et du feedback à l'étudiant
+- Développer un système d'annotations dans l'éditeur
+- Créer un panneau de résultats dédié dans VS Code
+
+**Tests:**
+- Vérifier que les résultats s'affichent correctement
+- Tester l'ergonomie de l'interface de feedback
+- S'assurer que les annotations dans l'éditeur sont claires
 
 ## Phase 6: Interface utilisateur de l'extension
 
