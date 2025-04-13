@@ -3,6 +3,7 @@
   "displayName": "teachassist",
   "description": "Extension d'aide à la correction automatique de code Java",
   "version": "0.0.1",
+  "icon": "media/teachassist.png",
   "engines": {
     "vscode": "^1.99.0"
   },
@@ -12,6 +13,23 @@
   "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "teachassist-sidebar",
+          "title": "TeachAssist",
+          "icon": "media/teachassist.svg"
+        }
+      ]
+    },
+    "views": {
+      "teachassist-sidebar": [
+        {
+          "id": "teachassist.welcome",
+          "name": "Assistant"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "teachassist.openWelcomePanel",

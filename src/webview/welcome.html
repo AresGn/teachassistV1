@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeachAssist</title>
+    {{stylePlaceholder}}
+</head>
+<body>
+    <div class="welcome-container">
+        <div class="header-title">
+            <div class="app-icon"></div>
+            <h1>TeachAssist</h1>
+        </div>
+        <h2>Assistant de correction automatique</h2>
+        <p>Bienvenue ! Cet outil vous aide à corriger automatiquement les travaux de vos étudiants.</p>
+        
+        <div class="phase-indicator">
+            <span class="phase {{detectionPhaseClass}}" data-number="1">Détection</span>
+            <span class="phase {{extractionPhaseClass}}" data-number="2">Extraction</span>
+            <span class="phase {{analysisPhaseClass}}" data-number="3">Analyse</span>
+            <span class="phase {{resultsPhaseClass}}" data-number="4">Résultats</span>
+        </div>
+
+        {{detectButtonPlaceholder}}
+    </div>
+    
+    <div class="stats-container">
+        {{statsPlaceholder}}
+    </div>
+    
+    {{zipListPlaceholder}}
+    
+    <div class="progress-container" id="overall-progress">
+        <div class="progress-bar" style="width: {{progressPercentage}}%;"></div>
+    </div>
+    
+    {{javaFilesPlaceholder}}
+    
+    <script>
+        const vscode = acquireVsCodeApi();
+        
+        function detectZip() {
+            // Afficher une animation pendant la détection
+            document.getElementById('overall-progress').style.display = 'block';
+            animateProgress(0, 30);
+            
+            vscode.postMessage({
+                command: 'detectZip'
+            });
+        }
+
+        function extractAndLocate() {
+            // Afficher une animation pendant l'extraction
+            document.getElementById('overall-progress').style.display = 'block';
+            animateProgress(30, 70);
+            
+            vscode.postMessage({
+                command: 'extractAndLocate'
+            });
+        }
+
+        function analyzeCode() {
+            // Afficher une animation pendant l'analyse
+            document.getElementById('overall-progress').style.display = 'block';
+            animateProgress(70, 100);
+            
+            vscode.postMessage({
+                command: 'analyzeCode'
+            });
+        }
+        
+        // Fonction pour animer la barre de progression
+        function animateProgress(start, end) {
+            const progressBar = document.querySelector('.progress-bar');
+            let width = start;
+            const interval = setInterval(() => {
+                if (width >= end) {
+                    clearInterval(interval);
+                } else {
+                    width++;
+                    progressBar.style.width = width + '%';
+                }
+            }, 20);
+        }
+    </script>
+</body>
+</html> 

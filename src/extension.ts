@@ -53,6 +53,10 @@ export function activate(context: vscode.ExtensionContext) {
 					WelcomePanel.currentPanel.updateZipList(zipFiles);
 				}
 
+				// Ajouter un badge sur la vue de la barre latérale
+				vscode.window.registerWebviewViewProvider('teachassist.welcome', 
+					new TeachAssistViewProvider(context.extensionUri, zipFiles.length));
+
 				vscode.window.showInformationMessage(`${zipFiles.length} fichiers ZIP trouvés`);
 			} else {
 				vscode.window.showWarningMessage('Aucun fichier ZIP trouvé dans le dossier de travail.');
@@ -154,7 +158,134 @@ export function activate(context: vscode.ExtensionContext) {
 		showResultsCommand,
 		exportResultsCommand
 	);
+
+	// Enregistrer la vue de la barre latérale
+	const provider = new TeachAssistViewProvider(context.extensionUri);
+	context.subscriptions.push(
+		vscode.window.registerWebviewViewProvider('teachassist.welcome', provider)
+	);
 }
 
 // This method is called when your extension is deactivated
 export function deactivate() {}
+
+class TeachAssistViewProvider implements vscode.WebviewViewProvider {
+	private _view?: vscode.WebviewView;
+	private _badgeCount: number;
+
+	constructor(private readonly _extensionUri: vscode.Uri, badgeCount: number = 0) {
+		this._badgeCount = badgeCount;
+	}
+
+	public resolveWebviewView(
+		webviewView: vscode.WebviewView,
+		context: vscode.WebviewViewResolveContext,
+		_token: vscode.CancellationToken,
+	) {
+		this._view = webviewView;
+		
+		// Définir le badge de notification si nécessaire
+		if (this._badgeCount > 0) {
+			this._view.badge = {
+				tooltip: `${this._badgeCount} fichiers détectés`,
+				value: this._badgeCount
+			};
+		}
+		
+		// Ne pas ouvrir automatiquement le panneau principal ici
+		// vscode.commands.executeCommand('teachassist.openWelcomePanel');
+		
+		webviewView.webview.options = {
+			enableScripts: true,
+			localResourceRoots: [
+				vscode.Uri.joinPath(this._extensionUri, 'media'),
+				vscode.Uri.joinPath(this._extensionUri, 'src', 'webview')
+			]
+		};
+
+		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+		// Gérer les messages du webview
+		webviewView.webview.onDidReceiveMessage(async (message) => {
+			switch (message.command) {
+				case 'openWelcomePanel':
+					vscode.commands.executeCommand('teachassist.openWelcomePanel');
+					break;
+			}
+		});
+		
+		// Ajouter un écouteur d'événements sur le changement de visibilité de la vue
+		webviewView.onDidChangeVisibility(() => {
+			if (webviewView.visible) {
+				// Ouvrir le panneau principal quand la vue devient visible (quand on clique sur l'icône)
+				vscode.commands.executeCommand('teachassist.openWelcomePanel');
+			}
+		});
+	}
+
+	private _getHtmlForWebview(webview: vscode.Webview) {
+		const styleVscUri = webview.asWebviewUri(
+			vscode.Uri.joinPath(this._extensionUri, 'src', 'webview', 'welcome.css')
+		);
+
+		const iconUri = webview.asWebviewUri(
+			vscode.Uri.joinPath(this._extensionUri, 'media', 'teachassist.svg')
+		);
+
+		return `<!DOCTYPE html>
+		<html lang="fr">
+		<head>
+			<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+			<title>TeachAssist</title>
+			<link rel="stylesheet" href="${styleVscUri}">
+			<style>
+				body {
+					padding: 10px;
+					display: flex;
+					flex-direction: column;
+					align-items: center;
+				}
+				.sidebar-icon {
+					width: 64px;
+					height: 64px;
+					margin-bottom: 15px;
+					background-image: url(${iconUri});
+					background-size: contain;
+					background-repeat: no-repeat;
+					background-position: center;
+					cursor: pointer;
+				}
+				h3 {
+					text-align: center;
+					margin-bottom: 15px;
+				}
+				.open-button {
+					padding: 8px 16px;
+					background-color: var(--vscode-button-background);
+					color: var(--vscode-button-foreground);
+					border: none;
+					border-radius: 2px;
+					cursor: pointer;
+				}
+				.open-button:hover {
+					background-color: var(--vscode-button-hoverBackground);
+				}
+			</style>
+		</head>
+		<body>
+			<div class="sidebar-icon" onclick="openPanel()"></div>
+			<h3>TeachAssist</h3>
+			<button class="open-button" onclick="openPanel()">Ouvrir le panneau</button>
+			
+			<script>
+				function openPanel() {
+					// Envoyer un message pour ouvrir le panneau principal
+					const vscode = acquireVsCodeApi();
+					vscode.postMessage({ command: 'openWelcomePanel' });
+				}
+			</script>
+		</body>
+		</html>`;
+	}
+}
