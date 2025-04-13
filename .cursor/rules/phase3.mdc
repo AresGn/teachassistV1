@@ -1,0 +1,654 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# README - Phase 3: Analyse Statique du Code Java
+
+## Objectif de la Phase 3
+
+L'objectif principal de cette phase est de développer un analyseur statique de code Java robuste et flexible. Cet analyseur doit être capable d'identifier la conformité du code soumis par les étudiants aux règles syntaxiques, sémantiques, structurelles, stylistiques et aux exigences spécifiques d'un exercice donné, définies via des fichiers de configuration JSON. **Cette phase se concentre sur la génération de données structurées (constats d'analyse) qui serviront d'entrée à la Phase 5 pour l'évaluation et la génération de feedback par IA.**
+
+## Composant Principal: `codeAnalyzer.ts`
+
+Le cœur de cette phase sera le module `codeAnalyzer.ts`, construit en utilisant la bibliothèque `java-parser` pour générer un arbre syntaxique concret (CST - Concrete Syntax Tree) du code Java soumis. Ce module encapsulera la logique d'analyse basée sur les règles de configuration et **produira des constats structurés.**
+
+## Concept Clé: Configuration Dynamique des Exercices et Évaluations via JSON
+
+Pour éviter de coder en dur les règles spécifiques à chaque exercice, nous introduisons un système de configuration. Chaque type d'exercice sera défini par un fichier JSON décrivant ses caractéristiques et les règles d'analyse. De plus, les professeurs peuvent créer des évaluations complètes (TD, devoirs, examens) regroupant plusieurs exercices, en spécifiant la pondération (points max) pour chaque exercice inclus.
+
+### Comment le Professeur l'utilise :
+
+1. **Création des Fichiers :** Le professeur crée d'abord les fichiers JSON `ExerciseConfig` pour *chaque* exercice individuel (ex: `03-conditions-if-else.json`, `05-boucle-for.json`, `15-compte-bancaire.json`).
+
+2. **Création de l'Évaluation :** Ensuite, il crée un fichier JSON `AssessmentConfig` (ex: `examen-s1.json`) qui liste les `exerciseId` des exercices à inclure, éventuellement avec un barème.
+
+```json
+// assessments/examen-s1.json
+{
+  "assessmentId": "examen-s1",
+  "name": "Examen Semestre 1 - Java",
+  "exercises": [
+    { "exerciseId": "03-conditions-if-else", "maxPoints": 4 },
+    { "exerciseId": "05-boucle-for", "maxPoints": 6 },
+    { "exerciseId": "15-compte-bancaire", "maxPoints": 10 }
+  ],
+  "totalMaxPoints": 20
+}
+```
+
+### Implémentation de l'Analyse des Évaluations
+
+1. **Structure des dossiers** :
+```
+configs/
+  ├── exercises/
+  │   ├── banques.json
+  │   ├── formules.json
+  │   └── intervalles.json
+  └── assessments/
+      ├── td1.json
+      └── examen-s1.json
+
+submissions/
+  ├── td1/
+  │   ├── Banques.java
+  │   ├── Formules.java
+  │   └── Intervalles.java
+  └── examen-s1/
+      ├── Conditions.java
+      ├── Boucles.java
+      └── CompteBancaire.java
+```
+
+2. **Processus complet d'analyse** :
+```typescript
+// src/extension.ts
+
+// Commande pour analyser une évaluation
+vscode.commands.registerCommand('teachassist.analyzeAssessment', async (assessmentId: string) => {
+  // 1. Obtenir le dossier de soumission
+  const submissionDir = path.join('submissions', assessmentId);
+  
+  // 2. Lire tous les fichiers Java
+  const javaFiles = await findJavaFiles(submissionDir);
+  
+  // 3. Analyser chaque fichier avec son exercice correspondant
+  const analyzer = new AssessmentAnalyzer(assessmentId);
+  const analysisFindings = await analyzer.analyze(javaFiles);
+  
+  // 4. (Phase 3) Exporter les constats structurés (optionnel)
+  exportFindingsToJson(analysisFindings);
+
+  // 5. (Phase 5) Transmettre les constats à l'IA pour évaluation et génération de feedback
+  // const evaluationResults = await aiEvaluator.evaluate(analysisFindings);
+
+  // 6. (Phase 5) Générer et afficher le rapport final basé sur l'évaluation de l'IA
+  // const htmlReport = generateFinalReport(evaluationResults);
+  // showFinalReport(htmlReport);
+});
+
+// (Phase 3) Fonction pour exporter les constats bruts en JSON
+function exportFindingsToJson(findings: AssessmentAnalysisFindings): void {
+  const exportPath = path.join('results', `${findings.assessmentId}_findings.json`);
+  fs.writeFileSync(exportPath, JSON.stringify(findings, null, 2));
+  console.log(`Findings exported to ${exportPath}`);
+}
+
+/* Suppression des fonctions generateAssessmentReport, showAssessmentReport, getScoreClass
+   car la génération de rapport final appartient à la Phase 5.
+   La Phase 3 produit des données structurées, pas un rapport HTML formaté avec scores et feedback.
+*/
+```
+
+3. **Exemple de rapport visuel (sera généré en Phase 5)** :
+```html
+<!-- NOTE: Cet exemple de rendu HTML est illustratif de ce que la Phase 5 produira.
+     La Phase 3 ne génère pas directement ce rapport. -->
+<div class="assessment-report">
+// ... (contenu similaire à l'original, mais généré par la Phase 5) ...
+</div>
+```
+
+4. **Export des résultats (Constats de Phase 3)** :
+```typescript
+// (Phase 3) Fonction pour exporter les constats bruts en JSON
+function exportFindingsToJson(findings: AssessmentAnalysisFindings): void {
+  const exportPath = path.join('results', `${findings.assessmentId}_findings.json`);
+  fs.writeFileSync(exportPath, JSON.stringify(findings, null, 2));
+}
+
+/* Suppression de generatePdfReport car la génération de PDF formaté
+   avec scores et feedback appartient à la Phase 5. L'export JSON des
+   constats bruts est la sortie principale de la Phase 3.
+*/
+```
+
+### Structures des Fichiers de Configuration
+
+#### `ExerciseConfig` (Configuration d'un exercice)
+
+Un fichier de configuration (`exerciseConfig.json` par exemple) définira un type d'exercice spécifique. Voici la structure de l'interface TypeScript qui le représente :
+
+```typescript
+// src/exerciseConfig.ts
+
+export interface ExerciseRuleDetail {
+  pattern?: string;        // Expression régulière pour détecter des motifs spécifiques (ex: structure de boucle, déclaration de classe)
+  description: string;    // Description de la règle ou du motif recherché
+  required?: boolean;     // Le motif/règle est-il obligatoire ? (par défaut: false)
+  errorMessage?: string;  // Message d'erreur si la règle n'est pas respectée ou si le motif est mal utilisé
+  // points?: number;     // SUPPRIMÉ: L'attribution de points se fait en Phase 5
+}
+
+export interface ExerciseConfig {
+  id: string;                      // Identifiant unique de l'exercice (ex: "01-hello-world", "05-boucle-for", "12-polymorphisme")
+  name: string;                    // Nom lisible de l'exercice (ex: "Affichage 'Hello World'", "Utilisation de boucle For", "Implémentation du Polymorphisme")
+  description: string;             // Description détaillée de ce que l'étudiant doit accomplir
+  rules: {
+    // -- Règles Syntaxiques & Structurelles de Base --
+    requiredClasses?: string[];       // Noms des classes obligatoires (ex: ["Formules", "Main"])
+    requiredMethods?: {              // Méthodes obligatoires (nom, et éventuellement types de paramètres/retour)
+      name: string;
+      params?: string[];           // Types des paramètres (ex: ["int", "String"])
+      returnType?: string;         // Type de retour (ex: "double", "void", "boolean")
+    }[];
+    disallowedElements?: string[];    // Éléments de syntaxe interdits (ex: ["System.exit", "goto"])
+    checkVariableScope?: boolean;     // Activer la vérification de la portée des variables (ex: locales vs globales)
+    checkMethodLength?: number;       // Longueur maximale recommandée pour une méthode (en lignes ou instructions)
+    checkCyclomaticComplexity?: number; // Seuil de complexité cyclomatique
+
+    // -- Règles Spécifiques à l'Exercice (Logique & Implémentation) --
+    allowedOperators?: string[];      // Opérateurs logiques/mathématiques autorisés (ex: ["+", "-", "*", "/", "%", "==", "<", ">=", "&&", "||"])
+    requiredDomainChecks?: ExerciseRuleDetail[]; // Vérifications de domaine/conditions préalables requises (ex: `x > 0` pour `log(x)`)
+    mathFunctions?: {                // Analyse spécifique des fonctions mathématiques
+      name: string;                  // Nom de la fonction (ex: "sqrt", "pow", "log")
+      domainCondition?: ExerciseRuleDetail; // Condition de domaine attendue avant l'appel
+      implementationPattern?: ExerciseRuleDetail; // Motif d'implémentation attendu (si différent de l'appel direct)
+    }[];
+    requiredControlStructures?: ("if" | "else" | "switch" | "for" | "while" | "do-while")[]; // Structures de contrôle obligatoires
+    exceptionHandling?: {            // Règles sur la gestion des exceptions
+        requiredTryCatch?: boolean;    // Bloc try-catch obligatoire ?
+        specificExceptions?: string[]; // Exceptions spécifiques à catcher (ex: ["ArithmeticException", "NullPointerException"])
+        requireFinally?: boolean;      // Bloc finally obligatoire ?
+    };
+    oopConcepts?: {                  // Règles spécifiques à l'orienté objet
+        inheritanceRequired?: string;  // Nom de la classe parente dont il faut hériter
+        interfaceImplementation?: string[]; // Noms des interfaces à implémenter
+        polymorphismCheck?: boolean;  // Vérifier l'utilisation correcte du polymorphisme
+        encapsulationCheck?: ("private" | "protected" | "public")[]; // Modificateurs d'accès attendus pour les attributs/méthodes
+    };
+    customPatterns?: ExerciseRuleDetail[]; // Autres motifs RegEx spécifiques à l'exercice (ex: utilisation d'une API spécifique, format de sortie)
+
+    // -- Style & Bonnes Pratiques --
+    checkComments?: boolean;          // Vérifier la présence de commentaires (Javadoc, explications)
+    checkNamingConventions?: ("camelCase" | "PascalCase" | "UPPER_SNAKE_CASE")[]; // Conventions de nommage à vérifier
+  };
+}
+
+// Fonction pour charger la configuration appropriée
+export const loadExerciseConfig = (exerciseId: string): Promise<ExerciseConfig> => {
+  // Logique pour charger le fichier JSON correspondant à exerciseId
+  // (depuis le système de fichiers de l'extension, les paramètres VS Code, ou un emplacement distant)
+  // Retourne une promesse résolue avec l'objet ExerciseConfig ou rejetée en cas d'erreur
+  // Exemple simplifié:
+  // return new Promise((resolve, reject) => {
+  //   try {
+  //     const configData = require(`./configs/${exerciseId}.json`); // Attention: le chemin doit être dynamique/sécurisé
+  //     resolve(configData as ExerciseConfig);
+  //   } catch (error) {
+  //     reject(`Configuration pour l'exercice ${exerciseId} non trouvée ou invalide.`);
+  //   }
+  // });
+};
+```
+
+### Interaction Utilisateur (WebView)
+
+L'interface utilisateur (WebView) de l'extension devra permettre de sélectionner une évaluation complète. **L'affichage des résultats finaux (scores, feedback) se fera après l'étape d'évaluation par l'IA (Phase 5).**
+
+```html
+<div class="assessment-selector">
+   <h3>Sélectionner l'évaluation à analyser :</h3>
+   <select id="assessmentType" onchange="requestAssessmentAnalysis()">
+       <option value="td1-java-poo">TD 1 - POO Java</option>
+       <option value="examen-s1">Examen Semestre 1 - Java</option>
+   </select>
+</div>
+<div id="assessment-results">
+</div>
+
+<script>
+  function requestAssessmentAnalysis() {
+    const vscode = acquireVsCodeApi();
+    const assessmentId = document.getElementById('assessmentType').value;
+    vscode.postMessage({
+      command: 'analyzeAssessment', // Nouvelle commande
+      assessmentId: assessmentId
+    });
+  }
+</script>
+```
+
+#### `AssessmentConfig` (Configuration d'une évaluation)
+```typescript
+export interface AssessmentExercise {
+  exerciseId: string;    // Référence à un ExerciseConfig
+  maxPoints?: number;    // Points maximums attribués à cet exercice dans l'évaluation (pour info Phase 5)
+}
+
+export interface AssessmentConfig {
+  assessmentId: string;  // Identifiant unique de l'évaluation
+  name: string;          // Nom lisible (ex: "TD 1 - POO Java")
+  exercises: AssessmentExercise[]; // Liste des exercices inclus
+  totalMaxPoints?: number; // Points totaux maximums (pour info Phase 5)
+}
+
+// Fonction pour charger une configuration d'évaluation
+export const loadAssessmentConfig = (assessmentId: string): Promise<AssessmentConfig> => {
+  // Logique pour charger le fichier JSON correspondant
+};
+```
+
+```html
+<div class="exercise-selector">
+   <h3>Sélectionner l'exercice à évaluer :</h3>
+   <select id="exerciseType" onchange="requestAnalysis()">
+       <option value="01-hello-world">01 - Hello World</option>
+       <option value="02-variables-types">02 - Variables et Types</option>
+       <option value="03-conditions-if-else">03 - Conditions If/Else</option>
+       <option value="05-boucle-for">05 - Boucle For</option>
+       <option value="08-fonctions-math">08 - Fonctions Mathématiques</option>
+       <option value="10-tableaux">10 - Tableaux Simples</option>
+       <option value="15-classes-objets">15 - Classes et Objets</option>
+       <option value="18-exceptions">18 - Gestion des Exceptions</option>
+       <option value="20-heritage">20 - Héritage</option>
+       <option value="custom">Charger une configuration personnalisée...</option>
+   </select>
+</div>
+<script>
+  function requestAnalysis() {
+    const vscode = acquireVsCodeApi();
+    const exerciseId = document.getElementById('exerciseType').value;
+    // Envoyer un message à l'extension avec l'ID de l'exercice sélectionné
+    // pour lancer l'analyse statique (Phase 3)
+    vscode.postMessage({
+      command: 'analyzeCode', // ou analyzeAssessment si applicable
+      exerciseId: exerciseId
+      // ... autres données si nécessaire
+    });
+    // La réponse affichée initialement pourrait être simple (ex: "Analyse terminée")
+    // ou montrer les constats bruts. Le rapport final vient après Phase 5.
+  }
+</script>
+```
+
+---
+
+## Analyse des Évaluations Complètes (TD, Devoirs, Examens)
+
+Pour analyser les évaluations complètes, la classe `AssessmentAnalyzer` :
+
+1. Charge la configuration de l'évaluation (`AssessmentConfig`)
+2. Pour chaque exercice dans l'évaluation :
+   - Charge la configuration spécifique (`ExerciseConfig`)
+   - Analyse le fichier Java correspondant via `CodeAnalyzer`
+   - Récupère les constats structurés produits par `CodeAnalyzer`
+3. Agrège les constats de tous les exercices dans un objet `AssessmentAnalysisFindings`. **Ne calcule pas de score ni ne génère de feedback ici.**
+
+```typescript
+// src/assessmentAnalyzer.ts
+import { CodeAnalyzer, ExerciseAnalysisFindings } from './codeAnalyzer'; // Adapter l'import
+import { loadAssessmentConfig, AssessmentConfig } from './assessmentConfigLoader'; // Adapter les imports
+import { loadExerciseConfig } from './exerciseConfigLoader'; // Adapter les imports
+
+// Structure pour les constats d'un exercice individuel (sortie de CodeAnalyzer)
+export interface ExerciseAnalysisFindings {
+  exerciseId: string;
+  findings: FindingDetail[]; // Liste détaillée des constats (règles passées/échouées, métriques, erreurs...)
+  syntaxErrors: SyntaxErrorDetail[]; // Erreurs de syntaxe détectées par le parser
+  // Pas de score ou feedback ici
+}
+
+// Structure pour les constats agrégés d'une évaluation complète (sortie de AssessmentAnalyzer)
+export interface AssessmentAnalysisFindings {
+    assessmentId: string;
+    name: string;
+    details: ExerciseFindingsDetail[]; // Renommé et type adapté
+    // Pas de score global ou feedback global ici
+}
+
+// Détail d'un constat spécifique
+export interface FindingDetail {
+    ruleId: string; // Identifiant de la règle (ex: 'requiredClass.Main', 'namingConvention.camelCase', 'customPattern.positiveAmount')
+    description: string; // Description de la règle vérifiée
+    status: 'passed' | 'failed' | 'warning' | 'info'; // Statut du constat
+    message?: string; // Message spécifique (ex: l'erreur exacte, la ligne concernée)
+    metricValue?: number | string; // Valeur d'une métrique (ex: complexité cyclomatique, longueur méthode)
+}
+
+// Détail d'une erreur de syntaxe
+export interface SyntaxErrorDetail {
+    line: number;
+    column: number;
+    message: string;
+}
+
+// Structure pour les détails d'un exercice dans les constats d'évaluation
+export interface ExerciseFindingsDetail {
+    exerciseId: string;
+    maxPoints?: number; // Info venant de AssessmentConfig pour Phase 5
+    analysis?: ExerciseAnalysisFindings; // Les constats réels
+    error?: string; // Erreur si l'analyse a échoué (ex: fichier non trouvé)
+}
+
+
+export class AssessmentAnalyzer {
+  private assessmentConfig: AssessmentConfig;
+  private findings: Map<string, ExerciseFindingsDetail> = new Map(); // Type adapté
+
+  constructor(private assessmentId: string) {}
+
+  async loadConfig(): Promise<void> {
+    this.assessmentConfig = await loadAssessmentConfig(this.assessmentId);
+  }
+
+  // La méthode analyze retourne maintenant les constats bruts
+  async analyze(files: Map<string, string>): Promise<AssessmentAnalysisFindings> {
+    await this.loadConfig();
+    
+    for (const exerciseConf of this.assessmentConfig.exercises) {
+      const exerciseId = exerciseConf.exerciseId;
+      const filePath = exerciseId + '.java'; // Supposition simplifiée du nom de fichier
+      const fileContent = files.get(filePath); // Chercher par nom de fichier complet
+      let detail: ExerciseFindingsDetail = { exerciseId: exerciseId, maxPoints: exerciseConf.maxPoints };
+      
+      if (fileContent) {
+        try {
+            // Supposons que CodeAnalyzer est aussi adapté pour retourner ExerciseAnalysisFindings
+            const analyzer = new CodeAnalyzer(exerciseId); // Potentiellement charger config ici ou dans analyze
+            const exerciseFindings: ExerciseAnalysisFindings = await analyzer.analyze(fileContent);
+            detail.analysis = exerciseFindings;
+        } catch (error: any) {
+            console.error(`Error analyzing ${exerciseId}:`, error);
+            detail.error = `Failed to analyze: ${error.message || error}`;
+        }
+      } else {
+          console.warn(`File not found for exercise ${exerciseId}: ${filePath}`);
+          detail.error = `File not found: ${filePath}`;
+      }
+       this.findings.set(exerciseId, detail);
+    }
+
+    return this.aggregateFindings(); // Renommé generateReport en aggregateFindings
+  }
+
+  // Renommé generateReport en aggregateFindings et adapté pour retourner les constats
+  private aggregateFindings(): AssessmentAnalysisFindings {
+    const details: ExerciseFindingsDetail[] = [];
+    this.assessmentConfig.exercises.forEach(exerciseConf => {
+        const findingDetail = this.findings.get(exerciseConf.exerciseId);
+        details.push(findingDetail || { exerciseId: exerciseConf.exerciseId, error: "Analysis detail missing" }); // Assurer que chaque exercice est listé
+    });
+
+
+    // Retourne l'objet de constats agrégés, sans calcul de score ou feedback global
+    return {
+      assessmentId: this.assessmentConfig.assessmentId,
+      name: this.assessmentConfig.name,
+      details: details
+    };
+  }
+
+  // Suppression de generateOverallFeedback
+}
+// ... (Gestion des Fichiers Multiples) ... Reste conceptuellement similaire
+
+// ... (async function analyzeAssessment adaptaté) ...
+async function analyzeAssessment(assessmentId: string) {
+  // 1. Charger la configuration de l'évaluation
+  const assessmentConfig = await loadAssessmentConfig(assessmentId);
+  
+  // 2. Lire tous les fichiers Java dans le dossier de l'étudiant
+  const files = await readStudentFiles(assessmentId, assessmentConfig); // Passer config pour connaitre les noms attendus
+  
+  // 3. Analyser chaque exercice pour obtenir les constats
+  const analyzer = new AssessmentAnalyzer(assessmentId);
+  const findings: AssessmentAnalysisFindings = await analyzer.analyze(files); // Récupère les constats
+
+  // 4. Exporter/Stocker les constats (Optionnel Phase 3)
+  exportFindingsToJson(findings);
+  
+  // 5. Passer les constats à la Phase 5 pour évaluation et reporting
+  // triggerPhase5Evaluation(findings);
+}
+
+// Adapter readStudentFiles pour potentiellement utiliser les exerciseId de la config
+async function readStudentFiles(assessmentId: string, config: AssessmentConfig): Promise<Map<string, string>> {
+  const files = new Map<string, string>();
+  const dirPath = path.join('submissions', assessmentId);
+
+    try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+        for (const entry of entries) {
+            if (entry.isFile() && entry.name.endsWith('.java')) {
+                // Idéalement, mapper le nom de fichier à un exerciseId si la convention est stricte (ex: Banques.java -> banques)
+                // Ou lire tous les .java et laisser AssessmentAnalyzer choisir
+                const filePath = path.join(dirPath, entry.name);
+                const content = await fs.readFile(filePath, 'utf8');
+                files.set(entry.name, content); // Clé = nom de fichier
+            }
+        }
+    } catch (error) {
+        console.error(`Error reading submission directory ${dirPath}:`, error);
+        // Peut-être retourner une erreur ou une map vide
+    }
+  return files;
+}
+
+
+// ... (Structure des résultats adaptée) ...
+// Voir les interfaces ExerciseAnalysisFindings et AssessmentAnalysisFindings définies plus haut.
+
+// ... (Exemple de rapport JSON adapté pour montrer les constats) ...
+```json
+// Exemple de sortie JSON de Phase 3 (Constats)
+{
+  "assessmentId": "td1-java-poo",
+  "name": "TD 1 - Programmation Orientée Objet",
+  "details": [
+    {
+      "exerciseId": "banques",
+      "maxPoints": 10, // Pour Phase 5
+      "analysis": {
+        "exerciseId": "banques",
+        "findings": [
+          { "ruleId": "requiredClass.CompteBancaire", "description": "Classe CompteBancaire présente", "status": "passed" },
+          { "ruleId": "oopConcepts.encapsulationCheck.private", "description": "Attribut solde privé", "status": "passed" },
+          { "ruleId": "requiredMethod.deposer", "description": "Méthode deposer(double) présente", "status": "passed" },
+          { "ruleId": "requiredMethod.retirer", "description": "Méthode retirer(double) présente", "status": "passed" },
+          { "ruleId": "requiredMethod.getSolde", "description": "Méthode getSolde() présente", "status": "passed" },
+          { "ruleId": "domainCheck.retraitPositif", "description": "Vérification montant retrait > 0", "status": "passed" },
+          { "ruleId": "domainCheck.retraitPossible", "description": "Vérification solde suffisant avant retrait", "status": "failed", "message": "La vérification du solde avant retrait est manquante ou incorrecte dans la méthode retirer." },
+          { "ruleId": "namingConvention.camelCase", "description": "Convention camelCase pour méthodes/attributs", "status": "passed" },
+          { "ruleId": "comments.javadoc", "description": "Présence de Javadoc pour méthodes publiques", "status": "warning", "message": "Javadoc manquant pour la méthode retirer." }
+        ],
+        "syntaxErrors": []
+      }
+    },
+    {
+      "exerciseId": "formules", 
+      "maxPoints": 10, // Pour Phase 5
+      "analysis": {
+         "exerciseId": "formules",
+         "findings": [
+            // ... autres constats ...
+            { "ruleId": "quality.codeDuplication", "description": "Détection de code dupliqué", "status": "warning", "message": "Sections de code similaires détectées aux lignes 25 et 42." }
+         ],
+         "syntaxErrors": []
+      }
+    },
+    {
+      "exerciseId": "intervalles",
+      "maxPoints": 10, // Pour Phase 5
+      "analysis": null, // Exemple si l'analyse échoue
+      "error": "File not found: Intervalles.java"
+    }
+  ]
+  // Pas de totalScore ou overallFeedback ici
+}
+```
+
+## Étape 3.1: Parsing et Analyse Syntaxique/Sémantique (Pilotée par la Configuration)
+
+Cette étape utilise `java-parser` pour générer le CST et applique ensuite les règles définies dans l'`ExerciseConfig` chargée pour **collecter des constats**.
+
+-   **Créer/Adapter les modules `codeAnalyzer.ts` et `assessmentAnalyzer.ts`:**
+    -   Instancier l'analyseur avec l'ID de l'exercice : `new CodeAnalyzer(selectedExerciseId)`.
+    -   Le constructeur (ou la méthode `analyze`) charge la configuration JSON correspondante.
+    -   Les méthodes d'analyse utilisent `this._config` pour guider la vérification des règles.
+-   **Implémenter l'analyse de la structure du code Java (basée sur `config.rules`)**:
+    -   Détecter la présence/absence de la classe principale et des méthodes requises (`requiredClasses`, `requiredMethods`). **Enregistrer un constat 'passed' ou 'failed'.**
+    -   Identifier les blocs de code et leur imbrication.
+    -   Analyser les déclarations de variables et vérifier leur portée si `checkVariableScope` est activé. **Enregistrer un constat.**
+    -   Analyser les expressions, vérifier l'utilisation des opérateurs (`allowedOperators`) et interdire ceux listés dans `disallowedElements`. **Enregistrer les constats.**
+-   **Vérifier la présence des conditions et contraintes spécifiques (basées sur `config.rules`)**:
+    -   Détecter les structures (`if/else/switch`, etc.). Vérifier si les `requiredControlStructures` sont présentes. **Enregistrer les constats.**
+    -   Analyser les conditions spécifiques (`requiredDomainChecks`, `mathFunctions.domainCondition`). **Enregistrer les constats.**
+    -   Vérifier la gestion des cas limites si des `customPatterns` les décrivent. **Enregistrer les constats.**
+-   **Détecter l'implémentation des logiques spécifiques (basées sur `config.rules`)**:
+    -   Identifier les opérations utilisées et vérifier conformité avec `allowedOperators`. **Enregistrer les constats.**
+    -   Vérifier l'utilisation correcte des fonctions (`mathFunctions.name`) et pré-conditions (`mathFunctions.domainCondition`). **Enregistrer les constats.**
+    -   Rechercher des motifs spécifiques via `customPatterns` ou `mathFunctions.implementationPattern`. **Enregistrer les constats.**
+    -   Vérifier les concepts OOP (`oopConcepts`). **Enregistrer les constats.**
+    -   Valider la gestion des exceptions (`exceptionHandling`). **Enregistrer les constats.**
+-   **Gérer les cas particuliers et erreurs de base**:
+    -   Robustesse face au code mal formaté/incomplet.
+    -   Signaler les variables non déclarées (analyse sémantique basique). **Enregistrer comme constat.**
+    -   Capturer et rapporter les erreurs de syntaxe détectées par `java-parser` dans la structure de sortie (`syntaxErrors`).
+    -   Ignorer ou signaler les commentaires mal placés. **Enregistrer comme constat 'info' ou 'warning'.**
+
+**Tests (Étape 3.1):**
+
+-   Tester avec différents fichiers Java corrects et incorrects pour *chaque type d'exercice* défini par une configuration JSON.
+-   Vérifier que les **constats générés** reflètent correctement la présence/absence des éléments requis, l'utilisation d'éléments interdits, et la conformité aux contraintes spécifiques de chaque configuration.
+-   S'assurer que les erreurs de syntaxe sont correctement capturées dans la sortie structurée.
+-   Vérifier que l'analyse fonctionne malgré des variations de style (sauf si des règles spécifiques au style sont actives).
+
+---
+
+## Étape 3.2: Analyse de la Structure, du Style et de la Qualité (Pilotée par la Configuration)
+
+Étendre `codeAnalyzer.ts` pour collecter des **constats et métriques** sur les aspects qualitatifs, basés sur les options de la configuration.
+
+-   **Analyser l'organisation du code**:
+    -   Calculer et enregistrer la longueur des méthodes (`checkMethodLength`) et la complexité cyclomatique (`checkCyclomaticComplexity`) **comme métriques dans les constats**.
+    -   Vérifier la cohérence (via `customPatterns`) et **enregistrer les constats**.
+    -   Détection basique de code dupliqué (si implémenté) et **enregistrer un constat 'warning'**.
+-   **Analyser la lisibilité et les conventions (basées sur `config.rules`)**:
+    -   Vérifier le respect des conventions (`checkNamingConventions`). **Enregistrer les constats 'passed'/'failed'/'warning'.**
+    -   Analyser noms de variables/méthodes (longueur/clarté via conventions). **Enregistrer les constats.**
+    -   Enregistrer la complexité cyclomatique calculée.
+-   **Analyser la présence et la qualité des commentaires (basées sur `config.rules`)**:
+    -   Vérifier la présence de commentaires (`checkComments`). **Enregistrer un constat 'passed'/'failed'/'warning'.**
+    -   Identifier les commentaires TODO/FIXME. **Enregistrer comme constat 'info'.**
+-   **Analyser la gestion des exceptions (basées sur `config.rules`)**:
+    -   Vérification plus approfondie si `exceptionHandling` est configuré (catch générique vs spécifique). **Enregistrer les constats.**
+    -   Détection de `NullPointerException` potentiels (si analyse poussée). **Enregistrer comme constat 'warning'.**
+-   **Analyser la qualité générale du code**:
+    -   Détection de code mort. **Enregistrer comme constat 'warning'**.
+    -   Détection d'optimisations possibles. **Enregistrer comme constat 'info'**.
+    -   Vérifier `disallowedElements` (sécurité). **Enregistrer les constats.**
+    -   **Ne pas inférer** la maintenabilité ici ; les métriques collectées (complexité, longueur, commentaires, conventions) seront utilisées par la Phase 5.
+
+**Tests (Étape 3.2):**
+
+-   Tester avec des codes de différentes qualités pour un *même exercice*.
+-   Vérifier que le système **génère les constats et métriques appropriés** reflétant la qualité du code par rapport aux critères activés dans la configuration (ex: constat 'failed' pour `checkNamingConventions`, valeur correcte pour `checkCyclomaticComplexity`).
+-   S'assurer que les différents aspects (style, commentaires, complexité) sont correctement analysés et **représentés dans les constats structurés** en fonction de la configuration.
+
+---
+
+## Exemples Concrets de Configurations JSON
+
+// ... (Les exemples JSON sont corrects, car `points` a été retiré de ExerciseRuleDetail plus haut) ...
+// ... Garder les errorMessage car ils décrivent la nature de l'erreur détectée par Phase 3 ...
+
+// ... (Exemple 1: Hello World) ...
+// ... (Exemple 2: Calcul Moyenne) ...
+// ... (Exemple 3: Validation Age) ...
+// ... (Exemple 4: Fonction Log) ...
+// ... (Exemple 5: Compte Bancaire) ...
+
+## Avantages de cette Approche (Phase 3)
+
+1.  **Flexibilité**: Adaptez l'analyseur à *n'importe quel* exercice Java via JSON.
+2.  **Personnalisation**: Créez des configurations pour des besoins spécifiques.
+3.  **Maintenabilité**: Le code de l'analyseur (`codeAnalyzer.ts`) reste générique.
+4.  **Extensibilité**: Facile d'ajouter de nouveaux types de règles de détection.
+5.  **Clarté**: La configuration JSON définit clairement les éléments à vérifier.
+6.  **Découplage**: L'analyse statique (Phase 3) est séparée de l'évaluation subjective/notation (Phase 5), permettant des stratégies d'évaluation différentes (IA, barème manuel, etc.) basées sur les mêmes constats objectifs.
+
+Cette structure rend l'extension modulaire et adaptable.
+
+## Résumé des Modifications Apportées (Clarification Phase 3 vs Phase 5)
+
+Pour assurer une séparation claire des responsabilités, ce document a été mis à jour pour refléter les points suivants :
+
+1.  **Redéfinition de la Phase 3 :** La Phase 3 se concentre **uniquement sur l'analyse statique** et la génération de **"constats d'analyse" structurés** (`AssessmentAnalysisFindings`). Ces constats sont des données objectives (règles respectées/échouées, métriques, erreurs de syntaxe) basées sur les configurations JSON.
+2.  **Séparation de l'Évaluation (Phase 5) :** L'**attribution de scores**, le **calcul de points** et la **génération de feedback qualitatif** ne font **pas** partie de la Phase 3. Ces tâches sont déléguées à la **Phase 5 (Intégration de l'IA)**, qui utilisera les constats de la Phase 3 comme données d'entrée.
+3.  **Adaptation des Structures et Exemples :** Les interfaces TypeScript et les exemples de code ont été modifiés pour refléter la production de constats structurés (sans score ni feedback). Les configurations JSON ont été ajustées (`points` supprimé des règles, renommé en `maxPoints` dans l'évaluation globale) pour servir la Phase 5.
+4.  **Clarification du Flux :** La section suivante ("Passerelle vers la Phase 5") détaille comment les constats de la Phase 3 alimentent la Phase 5.
+5.  **Terminologie :** Le vocabulaire a été ajusté pour distinguer l'**analyse** (Phase 3) de l'**évaluation** (Phase 5).
+
+En bref, la Phase 3 fournit les données objectives, et la Phase 5 les interprète pour noter et donner du feedback.
+
+## Passerelle vers la Phase 5
+
+**La sortie principale de la Phase 3 est un ensemble de données structurées (`AssessmentAnalysisFindings`) décrivant de manière objective comment le code soumis se compare aux règles définies dans les configurations.** Ces constats incluent :
+*   Les règles qui ont réussi ou échoué.
+*   Les valeurs des métriques calculées (complexité, longueur, etc.).
+*   Les erreurs de syntaxe détectées.
+*   La présence de motifs spécifiques.
+
+**Ces données structurées constituent l'entrée essentielle pour la Phase 5.** L'intelligence artificielle (ou un autre mécanisme d'évaluation) utilisera ces constats, ainsi que les `maxPoints` définis dans `AssessmentConfig`, pour :
+*   Calculer un score pour chaque exercice et un score global.
+*   Générer un feedback qualitatif et personnalisé basé sur les constats spécifiques.
+*   Produire le rapport final pour l'utilisateur.
+
+## Résumé des Fonctionnalités Implémentées (Phase 3)
+
+1. **Système de configuration flexible** :
+   - Configuration JSON pour chaque exercice (`ExerciseConfig`) définissant les règles d'analyse.
+   - Configuration JSON pour les évaluations complètes (`AssessmentConfig`) listant les exercices et leur pondération maximale (`maxPoints`).
+   - Prise en charge de règles variées (syntaxe, sémantique, structure, style, bonnes pratiques).
+
+2. **Analyse de code avancée** :
+   - Parsing du code Java avec `java-parser`.
+   - Vérification des règles spécifiées dans la configuration.
+   - Analyse structurelle et qualitative du code **pour générer des constats objectifs**.
+   - **Génération de données structurées (`AssessmentAnalysisFindings`)** résumant les constats et métriques.
+
+3. **Gestion des évaluations complètes** :
+   - Support des TD, devoirs et examens avec plusieurs exercices.
+   - Analyse automatique de multiples fichiers Java.
+   - **Agrégation des constats** par exercice dans une structure globale.
+
+4. **Interface utilisateur (Interaction Initiale)** :
+   - Sélection des évaluations via WebView pour lancer l'analyse.
+   - **(Optionnel)** Affichage brut ou simple confirmation de la fin de l'analyse de Phase 3.
+
+5. **Extensibilité** :
+   - Ajout facile de nouveaux types d'exercices via JSON.
+   - Configuration modulaire des règles d'analyse.
+
+## Prochaines Étapes (Focus Phase 3)
+
+1. Implémenter des tests unitaires complets pour `CodeAnalyzer` et `AssessmentAnalyzer` (vérifiant la génération correcte des constats).
+2. Affiner la structure des `FindingDetail` et `SyntaxErrorDetail` pour une meilleure exploitabilité par la Phase 5.
+3. Implémenter la détection de code dupliqué (si souhaité) et l'intégrer aux constats.
+4. Améliorer la robustesse du parsing et de la gestion des erreurs de configuration.
+5. Développer une interface de gestion des configurations JSON (peut être une phase séparée).
+6. Optimiser les performances de l'analyse pour les gros projets/fichiers.
+
+---
