@@ -1,0 +1,17 @@
+{
+    "id": "test-basic",
+    "name": "Test de base",
+    "description": "Un exercice simple pour tester le système d'analyse",
+    "rules": {
+        "requiredClasses": ["HelloWorld"],
+        "requiredMethods": [
+            {
+                "name": "main",
+                "params": ["String[]"],
+                "returnType": "void"
+            }
+        ],
+        "disallowedElements": ["System.exit"],
+        "checkMethodLength": 20
+    }
+} 

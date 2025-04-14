@@ -3,6 +3,11 @@ description:
 globs: 
 alwaysApply: false
 ---
+---
+description: 
+globs: 
+alwaysApply: false
+---
 # README - Phase 3: Analyse Statique du Code Java
 
 ## Objectif de la Phase 3

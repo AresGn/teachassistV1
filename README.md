@@ -113,8 +113,7 @@ Cette phase agrège les résultats des phases précédentes pour produire une é
 TeachAssit est développé par le Laboratoire d'Analyse et de Pédagogie en Informatique (LAPIT) pour répondre aux défis pédagogiques actuels dans l'enseignement de la programmation. Ce projet s'inscrit dans une démarche d'innovation pédagogique visant à améliorer l'expérience d'apprentissage tout en optimisant les ressources enseignantes.
 
 
-
-Je vois clairement ce que tu veux. Ta vision est bonne - utiliser des fichiers JSON descriptifs pour définir les règles d'analyse, c'est efficace et flexible. Voici comment structurer simplement la phase 3:
+ Ta vision est bonne - utiliser des fichiers JSON descriptifs pour définir les règles d'analyse, c'est efficace et flexible. Voici comment structurer simplement la phase 3:
 
 ## Phase 3: Implémentation simplifiée
 

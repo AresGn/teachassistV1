@@ -37,6 +37,10 @@
     
     {{javaFilesPlaceholder}}
     
+    {{configSelectorPlaceholder}}
+    
+    {{analysisResultsPlaceholder}}
+    
     <script>
         const vscode = acquireVsCodeApi();
         
@@ -61,12 +65,17 @@
         }
 
         function analyzeCode() {
+            // Récupérer la configuration sélectionnée
+            const configSelect = document.getElementById('config-selector');
+            const selectedConfig = configSelect ? configSelect.value : 'test-basic';
+            
             // Afficher une animation pendant l'analyse
             document.getElementById('overall-progress').style.display = 'block';
             animateProgress(70, 100);
             
             vscode.postMessage({
-                command: 'analyzeCode'
+                command: 'analyzeCode',
+                configId: selectedConfig
             });
         }
         

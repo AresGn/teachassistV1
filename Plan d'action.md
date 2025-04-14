@@ -39,12 +39,12 @@ Voici un plan de développement itératif pour créer votre extension VS Code de
 
 ### Étape 2.2: Recherche des fichiers Java
 - Créer un module `fileLocator.ts`
-- Implémenter une fonction qui recherche récursivement les fichiers `Formules.java`
+- Implémenter une fonction qui recherche récursivement les fichiers `.java`
 - Associer chaque fichier trouvé à l'étudiant correspondant
 
 **Tests:**
 - Tester avec des ZIP contenant le fichier dans différents sous-dossiers
-- Vérifier que tous les fichiers `Formules.java` sont trouvés
+- Vérifier que tous les fichiers `.java` sont trouvés
 - Tester le comportement avec des ZIP ne contenant pas le fichier recherché
 
 ## Phase 3: Analyse statique du code Java

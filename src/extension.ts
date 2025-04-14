@@ -137,8 +137,101 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	// Autres commandes existantes...
-	const analyzeCodeCommand = vscode.commands.registerCommand('teachassist.analyzeCode', async () => {
-		vscode.window.showInformationMessage('Analyse du code Java...');
+	const analyzeCodeCommand = vscode.commands.registerCommand('teachassist.analyzeCode', async (params?: { configId?: string }) => {
+		const workspaceFolders = vscode.workspace.workspaceFolders;
+		if (!workspaceFolders) {
+			vscode.window.showErrorMessage('Veuillez ouvrir un dossier de travail.');
+			return;
+		}
+
+		// Récupérer les fichiers Java trouvés
+		const javaFilesEntries = context.workspaceState.get<[string, string[]][]>('teachassist.javaFiles', []);
+		if (javaFilesEntries.length === 0) {
+			vscode.window.showWarningMessage('Aucun fichier Java détecté. Veuillez d\'abord extraire et localiser les fichiers.');
+			return;
+		}
+
+		const javaFiles = new Map<string, string[]>(javaFilesEntries);
+
+		// Utiliser la configuration passée en paramètre ou utiliser la sélection de l'utilisateur
+		let selectedExerciseId = params?.configId;
+
+		if (!selectedExerciseId) {
+			// Demander à l'utilisateur de sélectionner un exercice si non spécifié
+			const exerciseItems = [
+				{ label: "01 - Hello World", id: "test-basic" },
+				// D'autres exercices seront ajoutés au fur et à mesure
+			];
+
+			const selectedExercise = await vscode.window.showQuickPick(exerciseItems, {
+				placeHolder: 'Sélectionnez un exercice à analyser',
+			});
+
+			if (!selectedExercise) {
+				return; // L'utilisateur a annulé la sélection
+			}
+			
+			selectedExerciseId = selectedExercise.id;
+		}
+
+		// Utilisez maintenant selectedExerciseId pour l'analyse
+		// Pour cette première itération, nous analysons uniquement le premier fichier Java trouvé
+		const analyzerResults = new Map<string, any>();
+
+		await vscode.window.withProgress({
+			location: vscode.ProgressLocation.Notification,
+			title: `Analyse avec configuration: ${selectedExerciseId}`,
+			cancellable: false
+		}, async (progress) => {
+			try {
+				// Nous avons besoin d'importer dynamiquement l'analyseur de code ici
+				// car il peut ne pas être compilé au moment où extension.ts est chargé
+				const { CodeAnalyzer } = await import('./analyzer/codeAnalyzer.js');
+				
+				let processedFiles = 0;
+				const totalFiles = Array.from(javaFiles.values()).reduce((sum, files) => sum + files.length, 0);
+				
+				for (const [archive, files] of javaFiles.entries()) {
+					progress.report({ 
+						increment: 0, 
+						message: `Analyse des fichiers de ${path.basename(archive)}...` 
+					});
+					
+					for (const file of files) {
+						try {
+							const fileContent = await vscode.workspace.fs.readFile(vscode.Uri.file(file));
+							const content = Buffer.from(fileContent).toString('utf8');
+							
+							const analyzer = new CodeAnalyzer(selectedExerciseId);
+							const result = await analyzer.analyze(content);
+							
+							analyzerResults.set(file, result);
+							
+							processedFiles++;
+							progress.report({ 
+								increment: (processedFiles / totalFiles) * 100, 
+								message: `Analyse: ${processedFiles}/${totalFiles}` 
+							});
+						} catch (error) {
+							console.error(`Erreur lors de l'analyse de ${file}:`, error);
+							vscode.window.showErrorMessage(`Erreur lors de l'analyse de ${path.basename(file)}: ${error}`);
+						}
+					}
+				}
+				
+				// Stocker les résultats pour l'affichage
+				context.workspaceState.update('teachassist.analysisResults', Array.from(analyzerResults.entries()));
+				
+				// Mettre à jour l'interface Webview avec les résultats
+				if (WelcomePanel.currentPanel) {
+					WelcomePanel.currentPanel.updateAnalysisResults(analyzerResults);
+				}
+				
+				vscode.window.showInformationMessage(`Analyse terminée pour ${processedFiles} fichiers avec la configuration ${selectedExerciseId}.`);
+			} catch (error) {
+				vscode.window.showErrorMessage(`Erreur lors de l'analyse du code: ${error}`);
+			}
+		});
 	});
 
 	const showResultsCommand = vscode.commands.registerCommand('teachassist.showResults', async () => {

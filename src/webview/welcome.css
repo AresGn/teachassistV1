@@ -313,4 +313,234 @@ body {
     .button, .phase.active {
         background: linear-gradient(45deg, #2563eb, #4f46e5);
     }
+}
+
+/* Styles pour le sélecteur de configuration */
+.config-selector-container {
+    background-color: var(--vscode-editor-background);
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 5px;
+    border: 1px solid var(--vscode-panel-border);
+}
+
+.config-selector-container h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--vscode-foreground);
+}
+
+.config-selector-container select {
+    width: 100%;
+    padding: 8px;
+    background-color: var(--vscode-dropdown-background);
+    color: var(--vscode-dropdown-foreground);
+    border: 1px solid var(--vscode-dropdown-border);
+    border-radius: 2px;
+    margin-bottom: 10px;
+}
+
+.config-selector-container .config-description {
+    font-size: 0.9em;
+    color: var(--vscode-descriptionForeground);
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    border-radius: 3px;
+}
+
+/* Styles pour les résultats d'analyse */
+.analysis-results-container {
+    margin-top: 25px;
+    background-color: var(--vscode-editor-background);
+    border-radius: 6px;
+    border: 1px solid var(--vscode-panel-border);
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.analysis-results-container h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: var(--vscode-foreground);
+    border-bottom: 1px solid var(--vscode-panel-border);
+    padding-bottom: 10px;
+}
+
+.results-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 25px;
+    justify-content: space-between;
+}
+
+.result-stat {
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    border-radius: 4px;
+    padding: 15px;
+    text-align: center;
+    flex: 1;
+    min-width: 120px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.result-stat .stat-value {
+    display: block;
+    font-size: 2em;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--vscode-button-foreground);
+}
+
+.result-stat .stat-label {
+    display: block;
+    font-size: 0.9em;
+    color: var(--vscode-descriptionForeground);
+}
+
+.file-results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.file-result {
+    margin-bottom: 20px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.file-header {
+    background-color: var(--vscode-list-activeSelectionBackground);
+    padding: 10px 15px;
+    color: var(--vscode-list-activeSelectionForeground);
+}
+
+.file-header h3 {
+    margin: 0;
+    font-size: 1.1em;
+}
+
+.file-path {
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+.syntax-errors, .findings {
+    padding: 15px;
+}
+
+.syntax-errors h4, .findings h4 {
+    margin-top: 0;
+    color: var(--vscode-foreground);
+    font-size: 1em;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+.error-list, .findings-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.error-item, .finding-item {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 3px;
+    background-color: var(--vscode-editor-background);
+    border-left: 3px solid var(--vscode-errorForeground);
+}
+
+.error-location {
+    font-weight: bold;
+    color: var(--vscode-errorForeground);
+    font-size: 0.9em;
+    margin-bottom: 5px;
+}
+
+.error-message {
+    color: var(--vscode-foreground);
+    margin-bottom: 5px;
+}
+
+.error-code {
+    background-color: var(--vscode-textCodeBlock-background);
+    padding: 8px;
+    border-radius: 3px;
+    font-family: var(--vscode-editor-font-family);
+    font-size: 0.9em;
+    overflow-x: auto;
+    margin: 5px 0 0 0;
+}
+
+.finding-item {
+    display: flex;
+    align-items: flex-start;
+    border-left-width: 4px;
+}
+
+.finding-item.passed {
+    border-left-color: #4caf50;
+}
+
+.finding-item.failed {
+    border-left-color: #f44336;
+}
+
+.finding-item.warning {
+    border-left-color: #ff9800;
+}
+
+.finding-item.info {
+    border-left-color: #2196f3;
+}
+
+.finding-status {
+    font-size: 1.2em;
+    margin-right: 12px;
+    padding-top: 2px;
+}
+
+.finding-status.passed {
+    color: #4caf50;
+}
+
+.finding-status.failed {
+    color: #f44336;
+}
+
+.finding-status.warning {
+    color: #ff9800;
+}
+
+.finding-status.info {
+    color: #2196f3;
+}
+
+.finding-details {
+    flex: 1;
+}
+
+.finding-rule {
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 4px;
+    color: var(--vscode-editor-foreground);
+}
+
+.finding-description {
+    margin-bottom: 4px;
+}
+
+.finding-message {
+    font-size: 0.9em;
+    color: var(--vscode-descriptionForeground);
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    padding: 5px 8px;
+    border-radius: 3px;
+    margin-top: 5px;
 } 
